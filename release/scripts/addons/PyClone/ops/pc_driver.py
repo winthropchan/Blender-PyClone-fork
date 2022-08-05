@@ -15,7 +15,9 @@ from bpy.props import (StringProperty,
                        EnumProperty,
                        CollectionProperty)
 
+from .. import pyclone_utils
 from ..pc_lib import pc_unit, pc_utils, pc_types
+
 
 class PC_prompt_collection(PropertyGroup):
     add: BoolProperty(name="Add")
@@ -56,22 +58,21 @@ class DRIVER_OT_get_vars_from_object(Operator):
             self.prompts.remove(0)
 
         if self.assembly:
-            for prompt in self.assembly.obj_prompts.prompt_page.prompts:
+            for prompt in self.assembly.obj_prompts.pyclone.prompts:
                 prompt_copy = self.prompts.add()
                 prompt_copy.name = prompt.name
                 prompt_copy.prompt_type = prompt.prompt_type
         else:
-            for prompt in self.obj.prompt_page.prompts:
+            for prompt in self.obj.pyclone.prompts:
                 prompt_copy = self.prompts.add()
                 prompt_copy.name = prompt.name
                 prompt_copy.prompt_type = prompt.prompt_type
 
     def execute(self, context):
-        drivers = pc_utils.get_drivers(self.obj)
+        drivers = pyclone_utils.get_drivers(self.obj)
         for DR in drivers:
             if self.data_path in DR.data_path and DR.array_index == self.array_index:
                 # DR.driver.show_debug_info = False
-                
                 if self.x_loc:
                     var = DR.driver.variables.new()
                     var.name = 'loc_x'
@@ -155,21 +156,21 @@ class DRIVER_OT_get_vars_from_object(Operator):
                             var.targets[0].id = self.obj                            
                         
                         if prompt.prompt_type == 'FLOAT':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].float_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].float_value'
                         if prompt.prompt_type == 'DISTANCE':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].distance_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].distance_value'
                         if prompt.prompt_type == 'ANGLE':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].angle_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].angle_value'
                         if prompt.prompt_type == 'QUANTITY':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].quantity_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].quantity_value'
                         if prompt.prompt_type == 'PERCENTAGE':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].percentage_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].percentage_value'
                         if prompt.prompt_type == 'CHECKBOX':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].checkbox_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].checkbox_value'
                         if prompt.prompt_type == 'COMBOBOX':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].combobox_index'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].combobox_index'
                         if prompt.prompt_type == 'TEXT':
-                            var.targets[0].data_path = 'prompt_page.prompts["' + prompt.name + '"].text_value'
+                            var.targets[0].data_path = 'pyclone.prompts["' + prompt.name + '"].text_value'
 
                 var.type = 'SINGLE_PROP'
                 for target in var.targets:
@@ -198,9 +199,10 @@ class DRIVER_OT_get_vars_from_object(Operator):
     def invoke(self,context,event):
         self.reset_variables()
         self.obj = bpy.data.objects[self.object_name]
-        obj_bp = pc_utils.get_assembly_bp(self.obj)
+        var_obj = bpy.data.objects[self.var_object_name]
+        obj_bp = pc_utils.get_assembly_bp(var_obj)
         if obj_bp:
-            self.assembly = bp_types.Assembly(obj_bp)
+            self.assembly = pc_types.Assembly(obj_bp)
         self.get_prompts()
         wm = context.window_manager
         return wm.invoke_props_dialog(self, width=400)
@@ -246,7 +248,7 @@ class DRIVER_OT_remove_variable(Operator):
 
     def execute(self, context):
         obj = bpy.data.objects[self.object_name]
-        drivers = bp_utils.get_drivers(obj)
+        drivers = pyclone_utils.get_drivers(obj)
         for driver in drivers:
             if driver.data_path == self.data_path:
                 if driver.array_index == self.array_index:
@@ -255,10 +257,73 @@ class DRIVER_OT_remove_variable(Operator):
                             driver.driver.variables.remove(var)
         return {'FINISHED'}
 
+
+class DRIVER_OT_add_driver(Operator):
+    bl_idname = "pc_driver.add_driver"
+    bl_label = "Add Driver"
+    bl_description = "This adds a driver to a prompt"
+    bl_options = {'UNDO'}
+    
+    def execute(self, context):
+        assembly_bp = pc_utils.get_assembly_bp(context.object)    
+        assembly = pc_types.Assembly(assembly_bp)
+        prompt = assembly.obj_prompts.pyclone.prompts[assembly.obj_prompts.pyclone.prompt_index]
+        assembly.obj_prompts.driver_add(prompt.get_data_path())
+        return {'FINISHED'}
+
+
+class DRIVER_OT_remove_driver(Operator):
+    bl_idname = "pc_driver.remove_driver"
+    bl_label = "Remove Driver"
+    bl_description = "This removes a driver on a prompt"
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        assembly_bp = pc_utils.get_assembly_bp(context.object)    
+        assembly = pc_types.Assembly(assembly_bp)
+        prompt = assembly.obj_prompts.pyclone.prompts[assembly.obj_prompts.pyclone.prompt_index]
+        assembly.obj_prompts.driver_remove(prompt.get_data_path())
+        return {'FINISHED'}
+
+
+class DRIVER_OT_add_calculator_driver(Operator):
+    bl_idname = "pc_driver.add_calculator_driver"
+    bl_label = "Add Calculator Driver"
+    bl_description = "This adds a driver to a prompt"
+    bl_options = {'UNDO'}
+    
+    def execute(self, context):
+        assembly_bp = pc_utils.get_assembly_bp(context.object)    
+        assembly = pc_types.Assembly(assembly_bp)
+        calculator = assembly.obj_prompts.pyclone.calculators[assembly.obj_prompts.pyclone.calculator_index]
+        if calculator.distance_obj:
+            calculator.distance_obj.driver_add('pyclone.calculator_distance')
+        return {'FINISHED'}
+
+
+class DRIVER_OT_remove_calculator_driver(Operator):
+    bl_idname = "pc_driver.remove_calculator_driver"
+    bl_label = "Remove Calculator Driver"
+    bl_description = "This removes a driver on a prompt"
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        assembly_bp = pc_utils.get_assembly_bp(context.object)    
+        assembly = pc_types.Assembly(assembly_bp)
+        calculator = assembly.obj_prompts.pyclone.calculators[assembly.obj_prompts.pyclone.calculator_index]
+        if calculator.distance_obj:
+            calculator.distance_obj.driver_remove('pyclone.calculator_distance')
+        return {'FINISHED'}
+
+
 classes = (
     PC_prompt_collection,
     DRIVER_OT_get_vars_from_object,
     DRIVER_OT_remove_variable,
+    DRIVER_OT_add_driver,
+    DRIVER_OT_remove_driver,
+    DRIVER_OT_add_calculator_driver,
+    DRIVER_OT_remove_calculator_driver,
 )
 
 register, unregister = bpy.utils.register_classes_factory(classes)

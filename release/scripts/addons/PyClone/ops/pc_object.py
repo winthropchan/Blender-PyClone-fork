@@ -25,6 +25,12 @@ class pc_object_OT_select_object(Operator):
 
     obj_name: StringProperty(name='Object Name')
 
+    @classmethod
+    def poll(cls, context):
+        if context.mode != 'OBJECT':
+            return False
+        return True
+
     def execute(self, context):
         if self.obj_name in context.scene.objects:
             bpy.ops.object.select_all(action = 'DESELECT')
@@ -101,6 +107,22 @@ class pc_object_OT_assign_verties_to_vertex_group(Operator):
 
         if obj.mode == 'OBJECT':
             bpy.ops.object.editmode_toggle()
+
+        return{'FINISHED'}
+
+class pc_object_OT_apply_modifiers_and_drivers(Operator):
+    bl_idname = "pc_object.apply_modifiers_and_drivers"
+    bl_label = "Apply Modifiers and Drivers"
+    bl_description = "This will apply all of the modifiers and drivers in the scene"
+    bl_options = {'UNDO'}
+    
+    def execute(self,context):
+
+        for obj in bpy.data.objects:
+            pass
+            for mod in obj.modifiers:
+                if mod.type == 'HOOK':
+                    pass #apply modifier
 
         return{'FINISHED'}
 

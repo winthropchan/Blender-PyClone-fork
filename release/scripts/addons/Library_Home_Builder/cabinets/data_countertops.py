@@ -12,7 +12,7 @@ class Countertop(pc_types.Assembly):
     placement_id = ""
 
     def draw(self):
-        self.create_assembly("Carcass")
+        self.create_assembly("Countertop")
         self.obj_bp["IS_COUNTERTOP_BP"] = True
 
         common_prompts.add_countertop_prompts(self)
@@ -36,3 +36,5 @@ class Countertop(pc_types.Assembly):
         deck.dim_y('depth',[depth])
         deck.dim_z('deck_thickness',[deck_thickness])
         home_builder_utils.flip_normals(deck)
+
+        self.obj_z.location.z = self.get_prompt("Deck Thickness").get_value()
