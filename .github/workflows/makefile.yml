@@ -17,3 +17,5 @@ jobs:
     - name: Install dependencies
       run: make update
 
+    - name: Build macos binary
+      run: make
