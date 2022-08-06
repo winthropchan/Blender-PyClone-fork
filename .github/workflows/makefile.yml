@@ -16,6 +16,4 @@ jobs:
     
     - name: Install dependencies
       run: make update
-      
-    - name: Build binaries
-      run: make
+
