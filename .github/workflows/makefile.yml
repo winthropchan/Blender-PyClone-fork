@@ -1,0 +1,21 @@
+name: Build macos
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: macos-11
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: make update
+
+    - name: Build macos binary
+      run: make
